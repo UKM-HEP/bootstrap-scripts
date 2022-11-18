@@ -4,28 +4,27 @@
 
 test -z "$BUILD_PREFIX" && BUILD_PREFIX="$PWD"
 test -z "$INSTALL_PREFIX" && INSTALL_PREFIX="$PWD/local"
-test -z "$MAKE" && MAKE="make -j6"
+test -z "$MAKE" && MAKE="make -j12"
 
-test -z "$INSTALL_HEPMC2" && INSTALL_HEPMC2="1"
-test -z "$INSTALL_HEPMC3" && INSTALL_HEPMC3="1"
-test -z "$INSTALL_FASTJET" && INSTALL_FASTJET="1"
-test -z "$INSTALL_FJCONTRIB" && INSTALL_FJCONTRIB="1"
-test -z "$INSTALL_LHAPDF6" && INSTALL_LHAPDF6="1"
-test -z "$INSTALL_YODA" && INSTALL_YODA="1"
-test -z "$INSTALL_RIVET" && INSTALL_RIVET="1"
+test -z "$INSTALL_HEPMC2" && INSTALL_HEPMC2="0"
+test -z "$INSTALL_HEPMC3" && INSTALL_HEPMC3="0"
+test -z "$INSTALL_FASTJET" && INSTALL_FASTJET="0"
+test -z "$INSTALL_FJCONTRIB" && INSTALL_FJCONTRIB="0"
+test -z "$INSTALL_LHAPDF6" && INSTALL_LHAPDF6="0"
+test -z "$INSTALL_YODA" && INSTALL_YODA="0"
+test -z "$INSTALL_RIVET" && INSTALL_RIVET="0"
 test -z "$INSTALL_OPENLOOP" && INSTALL_OPENLOOP="1"
 test -z "$INSTALL_SHERPA" && INSTALL_SHERPA="1"
 
-test -z "$RIVET_VERSION" && RIVET_VERSION="3.0.1" #"3.0.2"
-test -z "$YODA_VERSION" && YODA_VERSION="1.8.1" # "1.7.7"
-test -z "$OPENLOOP_VERSION" && OPENLOOP_VERSION="2.1.1"
-test -z "$SHERPA_VERSION" && SHERPA_VERSION="2.2.8"
-
-test -z "$HEPMC2_VERSION" && HEPMC2_VERSION="2.06.09" #< TODO: update to v3 when stable
-test -z "$HEPMC3_VERSION" && HEPMC3_VERSION="3.1.2"
-test -z "$FASTJET_VERSION" && FASTJET_VERSION="3.3.2"
+test -z "$HEPMC2_VERSION" && HEPMC2_VERSION="2.06.10"
+test -z "$HEPMC3_VERSION" && HEPMC3_VERSION="3.2.5"
+test -z "$FASTJET_VERSION" && FASTJET_VERSION="3.4.0"
 test -z "$FJCONTRIB_VERSION" && FJCONTRIB_VERSION="1.041"
-test -z "$LHAPDF6_VERSION" && LHAPDF6_VERSION="6.2.3"
+test -z "$LHAPDF6_VERSION" && LHAPDF6_VERSION="6.4.0"
+test -z "$YODA_VERSION" && YODA_VERSION="1.9.4"
+test -z "$RIVET_VERSION" && RIVET_VERSION="3.1.5"
+test -z "$OPENLOOP_VERSION" && OPENLOOP_VERSION="2.1.2"
+test -z "$SHERPA_VERSION" && SHERPA_VERSION="2.2.12"
 
 ## Rivet needs C++11 now: first run a simple test for that
 test -z "$CXX" && CXX="g++"
@@ -54,7 +53,6 @@ test -z "$SHERPAPATH" && SHERPAPATH="/usr"
 test -z "$RIVET_CONFFLAGS" && RIVET_CONFFLAGS="" #--enable-unvalidated
 test -z "$YODA_CONFFLAGS" && YODA_CONFFLAGS=""
 
-
 if [[ "$INSTALL_RIVETDEV" -eq "1" ]]; then
     ## For rivetdev we skip the normal yoda/rivet installation
     INSTALL_YODA="0"
@@ -71,26 +69,49 @@ export CPPFLAGS="$CPPFLAGS -DNDEBUG"
 ###############
 
 echo "Running Sherpa bootstrap script"
-echo "Building Sherpa $SHERPA_VERSION, Rivet $RIVET_VERSION, YODA $YODA_VERSION"
+sleep 3
+echo "Building :"
+
+[ "$INSTALL_HEPMC2"    -eq 1 ] && echo "HepMC2    : $HEPMC2_VERSION"
+[ "$INSTALL_HEPMC3"    -eq 1 ] && echo "HepMC3    : $HEPMC3_VERSION"
+[ "$INSTALL_FASTJET"   -eq 1 ] && echo "FastJet   : $FASTJET_VERSION"
+[ "$INSTALL_FJCONTRIB" -eq 1 ] && echo "Fjcontrib : $FJCONTRIB_VERSION"
+[ "$INSTALL_LHAPDF6"   -eq 1 ] && echo "LHAPDF    : $LHAPDF6_VERSION"
+[ "$INSTALL_YODA"      -eq 1 ] && echo "Yoda      : $YODA_VERSION"
+[ "$INSTALL_RIVET"     -eq 1 ] && echo "Rivet     : $RIVET_VERSION"
+[ "$INSTALL_OPENLOOP"  -eq 1 ] && echo "Openloop  : $OPENLOOP_VERSION"
+[ "$INSTALL_SHERPA"    -eq 1 ] && echo "Sherpa    : $SHERPA_VERSION"
+
+echo ""
 
 ## Immediate exit on a command (group) failure and optional debug mode
 set -e
 test -n "$DEBUG" && set -x
 export PATH=$INSTALL_PREFIX/bin:$PATH
 
-function wget_untar { wget --no-check-certificate $1 -O- | tar xz; }
+function wget_untar { wget --no-check-certificate -c $1 -O- | tar xz; }
 function conf { ./configure --prefix=$INSTALL_PREFIX "$@"; }
+function addbashrc {
+    TEST=$(grep -q "$@" ${HOME}/.bashrc; echo $?)
+    if [[ "$TEST" -eq "1" ]]; then
+        echo "$@" >> ~/.bashrc
+    fi
+    }
 function mmi { $MAKE "$@" && $MAKE install; }
 
 ## Make installation directory, with an etc subdir so Rivet etc. will install bash completion scripts
 mkdir -p $INSTALL_PREFIX/etc/bash_completion.d
 
-## Install HepMC
+## prepare environment
+addbashrc "export PATH=${INSTALL_PREFIX}/bin:\$PATH"
+source ~/.bashrc
+
+## Install HepMC2
 if [[ "$INSTALL_HEPMC2" -eq "1" ]]; then
     cd $BUILD_PREFIX
-    test -d hepmc$HEPMC2_VERSION || wget_untar http://hepmc.web.cern.ch/hepmc/releases/hepmc$HEPMC2_VERSION.tgz
-    cd hepmc$HEPMC2_VERSION
-    conf --with-momentum=GEV --with-length=MM
+    test -d HepMC-$HEPMC2_VERSION || wget_untar https://hepmc.web.cern.ch/hepmc/releases/hepmc$HEPMC2_VERSION.tgz
+    mkdir -p hepmc2-build; cd hepmc2-build
+    cmake -Dmomentum:STRING=GEV -Dlength:STRING=MM -DCMAKE_INSTALL_PREFIX=$INSTALL_PREFIX ../HepMC-$HEPMC2_VERSION
     mmi
     HEPMC2PATH=$INSTALL_PREFIX
 fi
@@ -98,9 +119,14 @@ fi
 ## Install HepMC3
 if [[ "$INSTALL_HEPMC3" -eq "1" ]]; then
     cd $BUILD_PREFIX
-    test -d HepMC3$HEPMC3_VERSION || wget_untar http://hepmc.web.cern.ch/hepmc/releases/HepMC3-$HEPMC3_VERSION.tar.gz
+    test -d HepMC3-$HEPMC3_VERSION || wget_untar http://hepmc.web.cern.ch/hepmc/releases/HepMC3-$HEPMC3_VERSION.tar.gz
     mkdir -p hepmc3-build; cd hepmc3-build
-    cmake -DHEPMC3_ENABLE_ROOTIO=ON -DROOT_DIR=`root-config --prefix` -DCMAKE_INSTALL_PREFIX=$INSTALL_PREFIX ../HepMC3-$HEPMC3_VERSION
+    cmake -DHEPMC3_ENABLE_ROOTIO=ON \
+	  -DROOT_DIR=`root-config --prefix` \
+	  -DCMAKE_INSTALL_PREFIX=$INSTALL_PREFIX \
+	  -DHEPMC3_Python_SITEARCH39=$INSTALL_PREFIX \
+	  -DHEPMC3_Python_SITEARCH27=$INSTALL_PREFIX \
+	  ../HepMC3-$HEPMC3_VERSION
     mmi
     HEPMC3PATH=$INSTALL_PREFIX
 fi
@@ -128,7 +154,7 @@ fi
 ## Install fjcontrib
 if [[ "$INSTALL_FJCONTRIB" -eq "1" ]]; then
     cd $BUILD_PREFIX
-    test -d fastjet-$FJCONTRIB_VERSION || wget_untar http://fastjet.hepforge.org/contrib/downloads/fjcontrib-$FJCONTRIB_VERSION.tar.gz
+    test -d fjcontrib-$FJCONTRIB_VERSION || wget_untar http://fastjet.hepforge.org/contrib/downloads/fjcontrib-$FJCONTRIB_VERSION.tar.gz
     cd fjcontrib-$FJCONTRIB_VERSION
     ./configure --fastjet-config=$FASTJETPATH/bin/fastjet-config CXXFLAGS=-fPIC # fastjet-config already contains INSTALL_PREFIX
     mmi fragile-shared-install
@@ -173,10 +199,9 @@ if [[ "$INSTALL_OPENLOOP" -eq "1" ]]; then
 
     # switch to github openloops (master)
     cd $BUILD_PREFIX
-    git clone https://gitlab.com/openloops/OpenLoops.git OpenLoops-$OPENLOOP_VERSION
+    test -d OpenLoops-$OPENLOOP_VERSION || git clone https://gitlab.com/openloops/OpenLoops.git -b OpenLoops-$OPENLOOP_VERSION OpenLoops-$OPENLOOP_VERSION
     cd OpenLoops-$OPENLOOP_VERSION
-    git checkout OpenLoops-$OPENLOOP_VERSION
-    git checkout -b OpenLoops-$OPENLOOP_VERSION
+    #git checkout OpenLoops-$OPENLOOP_VERSION && git checkout -b OpenLoops-$OPENLOOP_VERSION
     scons
     #./openloops libinstall update
     ./openloops libinstall pphhjj2 #lhc.coll
@@ -185,29 +210,35 @@ fi
 
 ## Install Sherpa
 if [[ "$INSTALL_SHERPA" -eq "1" ]]; then
-    #source $INSTALL_PREFIX
+    
     cd $BUILD_PREFIX
-    test -d SHERPA-MC-$SHERPA_VERSION || wget_untar https://sherpa.hepforge.org/downloads/SHERPA-MC-$SHERPA_VERSION.tar.gz
-    cd SHERPA-MC-$SHERPA_VERSION/AddOns/MCFM; ./install_mcfm.sh
+    #test -d SHERPA-MC-$SHERPA_VERSION || wget_untar https://sherpa.hepforge.org/downloads/SHERPA-MC-$SHERPA_VERSION.tar.gz
+    #cd SHERPA-MC-$SHERPA_VERSION/AddOns/MCFM; ./install_mcfm.sh
+    #--enable-mcfm=$BUILD_PREFIX/SHERPA-MC-$SHERPA_VERSION/AddOns/MCFM\
     cd $BUILD_PREFIX/SHERPA-MC-$SHERPA_VERSION
     # --enable-openloops=$BUILD_PREFIX/OpenLoops-${OPENLOOP_VERSION}
-    conf --enable-mpi\
-	 --enable-pyext\
-	 --enable-ufo\
-	 --enable-analysis\
-	 --enable-hepmc2=$BUILD_PREFIX/local\
-	 --enable-hepmc3root\
-	 --enable-hepmc3=`HepMC3-config --prefix`\
-	 --enable-rivet=`rivet-config --prefix`\
-	 --enable-fastjet=`fastjet-config --prefix`\
-	 --enable-openloops=$BUILD_PREFIX/OpenLoops-${OPENLOOP_VERSION}\
-	 --enable-mcfm=$BUILD_PREFIX/SHERPA-MC-$SHERPA_VERSION/AddOns/MCFM\
-	 --enable-lhole\
-	 --enable-root=`root-config --prefix`\
-	 --enable-lhapdf=`lhapdf-config --prefix`\
-	 --enable-gzip\
-	 --enable-pythia\
+    conf --enable-mpi \
+	 --enable-pyext \
+	 --enable-ufo \
+	 --enable-analysis \
+	 --enable-lhole \
+	 --enable-root=`root-config --prefix` \
+         --enable-lhapdf=`lhapdf-config --prefix` \
+	 --enable-hepmc2=$BUILD_PREFIX/local \
+	 --enable-hepmc3root \
+	 --enable-hepmc3=`HepMC3-config --prefix` \
+	 --enable-rivet=`rivet-config --prefix` \
+	 --enable-fastjet=`fastjet-config --prefix` \
+	 --enable-openloops=$BUILD_PREFIX/OpenLoops-${OPENLOOP_VERSION} \
+	 --enable-gzip \
+	 --enable-pythia \
 	 --with-sqlite3=install
+    
+    #Avoid building in Manual and Example directory    
+    sed -i 's,AddOns \\,AddOns,g' Makefile
+    sed -i 's,Manual \\,,g' Makefile
+    sed -i -e 's,Examples,,g' Makefile
+
     mmi
 fi
 
@@ -221,7 +252,7 @@ if [[ "$INSTALL_RIVETDEV" -eq "1" ]]; then
             if [ ! -e $name ]; then wget_untar http://ftpmirror.gnu.org/$1/$name.tar.gz; fi
             cd $name
             ./configure --prefix=$INSTALL_PREFIX
-            mmi
+            mmi -j12
             cd ..
         }
         test -e $INSTALL_PREFIX/bin/m4       || { echo; echo "Building m4"; _build_autotool m4 1.4.18; }
@@ -276,9 +307,11 @@ if [[ "$INSTALL_RIVETDEV" -eq "1" ]]; then
 fi
 
 ## Announce the build success
-echo; echo "All done. Now set some variables in your shell 
-#export SHERPA_ROOT_DIR=/home/shoh/works/GEN/bootstrap/non-conda/local/                                               
-#export SHERPA_INCLUDE_PATH=$SHERPA_ROOT_DIR/include/SHERPA-MC                                                        
-#export SHERPA_SHARE_PATH=$SHERPA_ROOT_DIR/share/SHERPA-MC                                                            
-#export SHERPA_LIBRARY_PATH=$SHERPA_ROOT_DIR/lib/SHERPA-MC                                                            
-#export LD_LIBRARY_PATH=$SHERPA_LIBRARY_PATH:$LD_LIBRARY_PATH     "
+echo; echo "All done. Now set some variables in your shell"
+addbashrc "export SHERPA_ROOT_DIR=${INSTALL_PREFIX}"
+addbashrc "export SHERPA_INCLUDE_PATH=$SHERPA_ROOT_DIR/include/SHERPA-MC"
+addbashrc "export SHERPA_SHARE_PATH=$SHERPA_ROOT_DIR/share/SHERPA-MC"
+addbashrc "export SHERPA_LIBRARY_PATH=$SHERPA_ROOT_DIR/lib/SHERPA-MC"
+addbashrc "export LD_LIBRARY_PATH=$SHERPA_LIBRARY_PATH:\$LD_LIBRARY_PATH"
+
+source ~/.bashrc
