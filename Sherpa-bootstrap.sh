@@ -212,7 +212,7 @@ fi
 if [[ "$INSTALL_SHERPA" -eq "1" ]]; then
     
     cd $BUILD_PREFIX
-    #test -d SHERPA-MC-$SHERPA_VERSION || wget_untar https://sherpa.hepforge.org/downloads/SHERPA-MC-$SHERPA_VERSION.tar.gz
+    test -d SHERPA-MC-$SHERPA_VERSION || wget_untar https://sherpa.hepforge.org/downloads/SHERPA-MC-$SHERPA_VERSION.tar.gz
     #cd SHERPA-MC-$SHERPA_VERSION/AddOns/MCFM; ./install_mcfm.sh
     #--enable-mcfm=$BUILD_PREFIX/SHERPA-MC-$SHERPA_VERSION/AddOns/MCFM\
     cd $BUILD_PREFIX/SHERPA-MC-$SHERPA_VERSION
