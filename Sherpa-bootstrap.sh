@@ -4,8 +4,9 @@
 
 test -z "$BUILD_PREFIX" && BUILD_PREFIX="$PWD"
 test -z "$INSTALL_PREFIX" && INSTALL_PREFIX="$PWD/local"
-test -z "$MAKE" && MAKE="make -j12"
+test -z "$MAKE" && MAKE="make -j10"
 
+test -z "$INSTALL_MPI" && INSTALL_MPI="1"
 test -z "$INSTALL_HEPMC2" && INSTALL_HEPMC2="1"
 test -z "$INSTALL_HEPMC3" && INSTALL_HEPMC3="1"
 test -z "$INSTALL_FASTJET" && INSTALL_FASTJET="1"
@@ -16,6 +17,7 @@ test -z "$INSTALL_RIVET" && INSTALL_RIVET="1"
 test -z "$INSTALL_OPENLOOP" && INSTALL_OPENLOOP="1"
 test -z "$INSTALL_SHERPA" && INSTALL_SHERPA="1"
 
+test -z "$MPI_VERSION" && MPI_VERSION="4.1.5"
 test -z "$HEPMC2_VERSION" && HEPMC2_VERSION="2.06.10"
 test -z "$HEPMC3_VERSION" && HEPMC3_VERSION="3.2.5"
 test -z "$FASTJET_VERSION" && FASTJET_VERSION="3.4.0"
@@ -41,6 +43,7 @@ else
 fi
 
 ## Paths for the case of existing installations
+test -z "$MPIPATH" && MPIPATH="/usr"
 test -z "$HEPMC2PATH" && HEPMC2PATH="/usr"
 test -z "$HEPMC3PATH" && HEPMC3PATH="/usr"
 test -z "$FASTJETPATH" && FASTJETPATH="/usr"
@@ -72,6 +75,7 @@ echo "Running Sherpa bootstrap script"
 sleep 3
 echo "Building :"
 
+[ "$INSTALL_MPI"       -eq 1 ] && echo "MPI       : $MPI_VERSION"
 [ "$INSTALL_HEPMC2"    -eq 1 ] && echo "HepMC2    : $HEPMC2_VERSION"
 [ "$INSTALL_HEPMC3"    -eq 1 ] && echo "HepMC3    : $HEPMC3_VERSION"
 [ "$INSTALL_FASTJET"   -eq 1 ] && echo "FastJet   : $FASTJET_VERSION"
@@ -104,14 +108,28 @@ mkdir -p $INSTALL_PREFIX/etc/bash_completion.d
 
 ## prepare environment
 addbashrc "export PATH=${INSTALL_PREFIX}/bin:\$PATH"
+#addbashrc "export PYTHONPATH=${INSTALL_PREFIX}/lib:\$PYTHONPATH"
 source ~/.bashrc
+
+## Install MPI
+if [[ "$INSTALL_MPI" -eq "1" ]]; then
+    cd $BUILD_PREFIX
+    test -d openmpi-$MPI_VERSION || wget_untar https://download.open-mpi.org/release/open-mpi/v4.1/openmpi-$MPI_VERSION.tar.gz
+    cd openmpi-$MPI_VERSION
+    conf
+    mmi all
+    MPIPATH=$INSTALL_PREFIX
+fi
 
 ## Install HepMC2
 if [[ "$INSTALL_HEPMC2" -eq "1" ]]; then
     cd $BUILD_PREFIX
     test -d HepMC-$HEPMC2_VERSION || wget_untar https://hepmc.web.cern.ch/hepmc/releases/hepmc$HEPMC2_VERSION.tgz
     mkdir -p hepmc2-build; cd hepmc2-build
-    cmake -Dmomentum:STRING=GEV -Dlength:STRING=MM -DCMAKE_INSTALL_PREFIX=$INSTALL_PREFIX ../HepMC-$HEPMC2_VERSION
+    cmake -Dmomentum:STRING=GEV \
+	 -Dlength:STRING=MM \
+	 -DCMAKE_INSTALL_PREFIX=$INSTALL_PREFIX \
+	 ../HepMC-$HEPMC2_VERSION
     mmi
     HEPMC2PATH=$INSTALL_PREFIX
 fi
